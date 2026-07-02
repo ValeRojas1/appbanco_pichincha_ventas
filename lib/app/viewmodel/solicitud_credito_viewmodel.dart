@@ -47,6 +47,12 @@ class SolicitudCreditoViewModel extends ChangeNotifier {
 
     switch (paso) {
       case 0:
+        if (!d.sePudoVisitar) return null; // No need to validate if not visited (UI will block)
+        if (d.nombreNegocio.trim().isEmpty) return 'Nombre del negocio requerido';
+        if (d.direccionNegocio.trim().isEmpty) return 'Dirección requerida';
+        if (d.telefono.trim().length < 9) return 'Teléfono inválido';
+        return null;
+      case 1:
         if (d.nombres.trim().isEmpty) return 'Ingrese nombres';
         if (d.apellidos.trim().isEmpty) return 'Ingrese apellidos';
         if (!RegExp(r'^\d{8}$').hasMatch(d.dni.trim())) {
@@ -57,7 +63,6 @@ class SolicitudCreditoViewModel extends ChangeNotifier {
         if (edad == null || edad < 18 || edad > 75) {
           return 'Edad debe estar entre 18 y 75 años';
         }
-        if (d.telefono.trim().length < 9) return 'Teléfono inválido';
         if (d.requiereConyuge) {
           if (d.conyugeNombres.trim().isEmpty) return 'Datos del cónyuge requeridos';
           if (!RegExp(r'^\d{8}$').hasMatch(d.conyugeDni.trim())) {
@@ -71,10 +76,8 @@ class SolicitudCreditoViewModel extends ChangeNotifier {
           }
         }
         return null;
-      case 1:
+      case 2:
         if (d.tipoNegocio.trim().isEmpty) return 'Tipo de negocio requerido';
-        if (d.nombreNegocio.trim().isEmpty) return 'Nombre del negocio requerido';
-        if (d.direccionNegocio.trim().isEmpty) return 'Dirección requerida';
         if (d.antiguedadMeses < 6) return 'Antigüedad mínima 6 meses';
         if (d.ingresosEstimados <= 0) return 'Ingresos inválidos';
         if (d.gastosEstimados < 0) return 'Gastos inválidos';
@@ -83,8 +86,6 @@ class SolicitudCreditoViewModel extends ChangeNotifier {
           return 'Destino máximo 500 caracteres';
         }
         if (d.codigoCiiu.trim().isEmpty) return 'Código CIIU requerido';
-        return null;
-      case 2:
         if (d.monto < 500 || d.monto > 150000) {
           return 'Monto entre S/ 500 y S/ 150,000';
         }

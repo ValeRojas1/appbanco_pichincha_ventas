@@ -389,41 +389,6 @@ class _LoginCard extends StatelessWidget {
                         ),
                       ),
               ],
-              if (!bloqueado) ...[
-                const SizedBox(height: 24),
-                const Divider(color: Colors.white12),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.fondoOscuro.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppTheme.amarillo.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Credenciales demo',
-                        style: TextStyle(
-                          color: AppTheme.amarillo,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        '100001 operador · 100002 superoperador\n'
-                        '100003 supervisor · 100004 administrador\n'
-                        'Contraseña: asesor123',
-                        style: TextStyle(fontSize: 11, color: Colors.white38),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
         );

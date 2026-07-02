@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io' show SocketException;
 
-import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/auth_constants.dart';
@@ -212,18 +212,34 @@ class AuthOficialViewModel extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _clearSessionInternal();
+    _oficial = null;
     _state = AuthOficialState.unauthenticated;
+    notifyListeners();
+    await _clearSessionInternal();
     notifyListeners();
   }
 
   Future<void> _clearSessionInternal() async {
-    await _authService.signOut();
-    await _sessionService.clearSession();
-    await _fichaService.clearOfflineCache();
-    await VisitaCarteraService().clearOfflineCache();
-    await PreEvaluacionService().clearOfflineCache();
-    await SolicitudCreditoService().limpiarColaEnvio();
+    try {
+      await _authService.signOut();
+    } catch (e) {
+      if (kDebugMode) debugPrint('signOut error: $e');
+    }
+    try {
+      await _sessionService.clearSession();
+    } catch (e) {
+      if (kDebugMode) debugPrint('clearSession error: $e');
+    }
+    if (!kIsWeb) {
+      try {
+        await _fichaService.clearOfflineCache();
+        await VisitaCarteraService().clearOfflineCache();
+        await PreEvaluacionService().clearOfflineCache();
+        await SolicitudCreditoService().limpiarColaEnvio();
+      } catch (e) {
+        if (kDebugMode) debugPrint('clearOfflineCache error: $e');
+      }
+    }
     _oficial = null;
     _lockoutTimer?.cancel();
   }

@@ -196,17 +196,17 @@ class _SolicitudCreditoWizardScreenState
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _Paso1Solicitante(
+                _Paso1Visita(
                   key: ValueKey('paso1_$_sessionKey'),
                   data: data,
                   onChanged: (d) => vm.actualizar(d),
                 ),
-                _Paso2Negocio(
+                _Paso2Solicitante(
                   key: ValueKey('paso2_$_sessionKey'),
                   data: data,
                   onChanged: (d) => vm.actualizar(d),
                 ),
-                _Paso3Condiciones(
+                _Paso3NegocioYCondiciones(
                   key: ValueKey('paso3_$_sessionKey'),
                   data: data,
                   onChanged: (d) => vm.actualizar(d),
@@ -252,8 +252,35 @@ class _SolicitudCreditoWizardScreenState
               );
             },
             onSiguiente: () async {
+              if (vm.paso == 0 && !data.sePudoVisitar) {
+                final cerrar = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppTheme.superficie,
+                    title: const Text('Visita no realizada', style: TextStyle(color: AppTheme.amarillo)),
+                    content: const Text('Al no haber podido visitar al cliente en la ubicación del negocio, no es posible continuar con la evaluación. La solicitud se cerrará.', style: TextStyle(color: Colors.white70)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Cerrar solicitud', style: TextStyle(color: Colors.redAccent)),
+                      ),
+                    ],
+                  ),
+                );
+                if (cerrar == true && context.mounted) {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.pop(context, false);
+                  }
+                }
+                return;
+              }
+
               if (vm.paso < 3) {
-                if (vm.paso == 0) {
+                if (vm.paso == 1) {
                   final ok = await BuroSolicitudGate.validarAntesDeSolicitud(
                     context,
                     dni: data.dni,
@@ -326,7 +353,7 @@ class _IndicadorPasos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Solicitante', 'Negocio', 'Condiciones', 'Confirmar'];
+    const labels = ['Visita', 'Solicitante', 'Negocio', 'Confirmar'];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
@@ -443,27 +470,133 @@ class _BarraNavegacion extends StatelessWidget {
   }
 }
 
-// ─── Paso 1 ───────────────────────────────────────────────────────────────────
+// ─── Paso 1: Visita y Ubicación ───────────────────────────────────────────────
 
-class _Paso1Solicitante extends StatefulWidget {
+class _Paso1Visita extends StatefulWidget {
   final SolicitudCreditoData data;
   final ValueChanged<SolicitudCreditoData> onChanged;
 
-  const _Paso1Solicitante({
+  const _Paso1Visita({
     super.key,
     required this.data,
     required this.onChanged,
   });
 
   @override
-  State<_Paso1Solicitante> createState() => _Paso1SolicitanteState();
+  State<_Paso1Visita> createState() => _Paso1VisitaState();
 }
 
-class _Paso1SolicitanteState extends State<_Paso1Solicitante> {
+class _Paso1VisitaState extends State<_Paso1Visita> {
+  late final TextEditingController _nombre;
+  late final TextEditingController _dir;
+  late final TextEditingController _telefono;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.data;
+    _nombre = TextEditingController(text: d.nombreNegocio);
+    _dir = TextEditingController(text: d.direccionNegocio);
+    _telefono = TextEditingController(text: d.telefono);
+  }
+
+  void _emit() {
+    final d = widget.data;
+    d.nombreNegocio = _nombre.text.trim();
+    d.direccionNegocio = _dir.text.trim();
+    d.telefono = _telefono.text.trim();
+    widget.onChanged(d);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.data;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _TituloPaso('Visita al Negocio y Ubicación'),
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppTheme.superficie,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.amarillo.withValues(alpha: 0.3)),
+            ),
+            child: SwitchListTile(
+              title: const Text(
+                '¿Pudo visitar al cliente en la ubicación?',
+                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text(
+                'Indique si se realizó la visita física al negocio del cliente.',
+                style: TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+              value: d.sePudoVisitar,
+              activeColor: AppTheme.amarillo,
+              onChanged: (v) {
+                d.sePudoVisitar = v;
+                _emit();
+                setState(() {});
+              },
+            ),
+          ),
+          if (d.sePudoVisitar) ...[
+            _Campo(controller: _nombre, label: 'Nombre del negocio', onChanged: (_) => _emit()),
+            _Campo(controller: _dir, label: 'Dirección del negocio', onChanged: (_) => _emit()),
+            _Campo(
+              controller: _telefono,
+              label: 'Teléfono',
+              keyboard: TextInputType.phone,
+              onChanged: (_) => _emit(),
+            ),
+            if (d.tieneCoordenadasNegocio) ...[
+              const SizedBox(height: 8),
+              UbicacionNegocioMapaPanel(
+                latitud: d.latitudNegocio!,
+                longitud: d.longitudNegocio!,
+                direccionTexto: d.direccionNegocio,
+                nombreNegocio: d.nombreNegocio,
+                compacto: true,
+              ),
+            ],
+          ] else ...[
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Atención: Al no haberse podido visitar al cliente, no será posible continuar con la evaluación del crédito.',
+                style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ]
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Paso 2: Solicitante ──────────────────────────────────────────────────────
+
+class _Paso2Solicitante extends StatefulWidget {
+  final SolicitudCreditoData data;
+  final ValueChanged<SolicitudCreditoData> onChanged;
+
+  const _Paso2Solicitante({
+    super.key,
+    required this.data,
+    required this.onChanged,
+  });
+
+  @override
+  State<_Paso2Solicitante> createState() => _Paso2SolicitanteState();
+}
+
+class _Paso2SolicitanteState extends State<_Paso2Solicitante> {
   late final TextEditingController _nombres;
   late final TextEditingController _apellidos;
   late final TextEditingController _dni;
-  late final TextEditingController _telefono;
   late final TextEditingController _email;
   late final TextEditingController _conyugeNombres;
   late final TextEditingController _conyugeDni;
@@ -478,7 +611,6 @@ class _Paso1SolicitanteState extends State<_Paso1Solicitante> {
     _nombres = TextEditingController(text: d.nombres);
     _apellidos = TextEditingController(text: d.apellidos);
     _dni = TextEditingController(text: d.dni);
-    _telefono = TextEditingController(text: d.telefono);
     _email = TextEditingController(text: d.email);
     _conyugeNombres = TextEditingController(text: d.conyugeNombres);
     _conyugeDni = TextEditingController(text: d.conyugeDni);
@@ -492,7 +624,6 @@ class _Paso1SolicitanteState extends State<_Paso1Solicitante> {
     d.nombres = _nombres.text.trim();
     d.apellidos = _apellidos.text.trim();
     d.dni = _dni.text.trim();
-    d.telefono = _telefono.text.trim();
     d.email = _email.text.trim();
     d.conyugeNombres = _conyugeNombres.text.trim();
     d.conyugeDni = _conyugeDni.text.trim();
@@ -579,12 +710,6 @@ class _Paso1SolicitanteState extends State<_Paso1Solicitante> {
             },
           ),
           _Campo(
-            controller: _telefono,
-            label: 'Teléfono',
-            keyboard: TextInputType.phone,
-            onChanged: (_) => _emit(),
-          ),
-          _Campo(
             controller: _email,
             label: 'Email (opcional)',
             keyboard: TextInputType.emailAddress,
@@ -633,26 +758,24 @@ class _Paso1SolicitanteState extends State<_Paso1Solicitante> {
   }
 }
 
-// ─── Paso 2 ───────────────────────────────────────────────────────────────────
+// ─── Paso 3: Negocio y Condiciones ────────────────────────────────────────────
 
-class _Paso2Negocio extends StatefulWidget {
+class _Paso3NegocioYCondiciones extends StatefulWidget {
   final SolicitudCreditoData data;
   final ValueChanged<SolicitudCreditoData> onChanged;
 
-  const _Paso2Negocio({
+  const _Paso3NegocioYCondiciones({
     super.key,
     required this.data,
     required this.onChanged,
   });
 
   @override
-  State<_Paso2Negocio> createState() => _Paso2NegocioState();
+  State<_Paso3NegocioYCondiciones> createState() => _Paso3NegocioYCondicionesState();
 }
 
-class _Paso2NegocioState extends State<_Paso2Negocio> {
+class _Paso3NegocioYCondicionesState extends State<_Paso3NegocioYCondiciones> {
   late final TextEditingController _tipo;
-  late final TextEditingController _nombre;
-  late final TextEditingController _dir;
   late final TextEditingController _ingresos;
   late final TextEditingController _gastos;
   late final TextEditingController _patrimonio;
@@ -667,13 +790,13 @@ class _Paso2NegocioState extends State<_Paso2Negocio> {
     '9602': '9602 — Peluquería y belleza',
   };
 
+  static const _plazos = [3, 6, 12, 18, 24, 36, 48, 60];
+
   @override
   void initState() {
     super.initState();
     final d = widget.data;
     _tipo = TextEditingController(text: d.tipoNegocio);
-    _nombre = TextEditingController(text: d.nombreNegocio);
-    _dir = TextEditingController(text: d.direccionNegocio);
     _ingresos = TextEditingController(
       text: d.ingresosEstimados > 0 ? d.ingresosEstimados.toStringAsFixed(0) : '',
     );
@@ -689,8 +812,6 @@ class _Paso2NegocioState extends State<_Paso2Negocio> {
   void _emit() {
     final d = widget.data;
     d.tipoNegocio = _tipo.text.trim();
-    d.nombreNegocio = _nombre.text.trim();
-    d.direccionNegocio = _dir.text.trim();
     d.ingresosEstimados = double.tryParse(_ingresos.text.trim()) ?? 0;
     d.gastosEstimados = double.tryParse(_gastos.text.trim()) ?? 0;
     final pat = _patrimonio.text.trim();
@@ -707,20 +828,8 @@ class _Paso2NegocioState extends State<_Paso2Negocio> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _TituloPaso('Datos del negocio'),
+          const _TituloPaso('Evaluación del negocio'),
           _Campo(controller: _tipo, label: 'Tipo de negocio', onChanged: (_) => _emit()),
-          _Campo(controller: _nombre, label: 'Nombre del negocio', onChanged: (_) => _emit()),
-          _Campo(controller: _dir, label: 'Dirección', onChanged: (_) => _emit()),
-          if (d.tieneCoordenadasNegocio) ...[
-            const SizedBox(height: 8),
-            UbicacionNegocioMapaPanel(
-              latitud: d.latitudNegocio!,
-              longitud: d.longitudNegocio!,
-              direccionTexto: d.direccionNegocio,
-              nombreNegocio: d.nombreNegocio,
-              compacto: true,
-            ),
-          ],
           AntiguedadEditableSlider(
             value: d.antiguedadMeses,
             min: 6,
@@ -766,34 +875,9 @@ class _Paso2NegocioState extends State<_Paso2Negocio> {
               _emit();
             },
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Paso 3 ───────────────────────────────────────────────────────────────────
-
-class _Paso3Condiciones extends StatelessWidget {
-  final SolicitudCreditoData data;
-  final ValueChanged<SolicitudCreditoData> onChanged;
-
-  const _Paso3Condiciones({
-    super.key,
-    required this.data,
-    required this.onChanged,
-  });
-
-  static const _plazos = [3, 6, 12, 18, 24, 36, 48, 60];
-
-  @override
-  Widget build(BuildContext context) {
-    final d = data;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 16),
+          const Divider(color: Colors.white24),
+          const SizedBox(height: 16),
           const _TituloPaso('Condiciones del crédito'),
           MontoEditableSlider(
             value: d.monto,
@@ -804,7 +888,8 @@ class _Paso3Condiciones extends StatelessWidget {
             prefijo: d.moneda,
             onChanged: (v) {
               d.monto = v;
-              onChanged(d);
+              widget.onChanged(d);
+              setState(() {});
             },
           ),
           const Text('Plazo (meses)', style: TextStyle(color: Colors.white54, fontSize: 12)),
@@ -823,7 +908,8 @@ class _Paso3Condiciones extends StatelessWidget {
                 ),
                 onSelected: (_) {
                   d.plazoMeses = p;
-                  onChanged(d);
+                  widget.onChanged(d);
+                  setState(() {});
                 },
               );
             }).toList(),
@@ -835,7 +921,8 @@ class _Paso3Condiciones extends StatelessWidget {
             items: const {'PEN': 'Soles (PEN)', 'USD': 'Dólares (USD)'},
             onChanged: (v) {
               d.moneda = v;
-              onChanged(d);
+              widget.onChanged(d);
+              setState(() {});
             },
           ),
           _Dropdown(
@@ -848,7 +935,8 @@ class _Paso3Condiciones extends StatelessWidget {
             },
             onChanged: (v) {
               d.tipoCuota = v;
-              onChanged(d);
+              widget.onChanged(d);
+              setState(() {});
             },
           ),
           _Dropdown(
@@ -862,7 +950,8 @@ class _Paso3Condiciones extends StatelessWidget {
             },
             onChanged: (v) {
               d.tipoGarantia = v;
-              onChanged(d);
+              widget.onChanged(d);
+              setState(() {});
             },
           ),
           Text(
@@ -883,7 +972,8 @@ class _Paso3Condiciones extends StatelessWidget {
             ),
             onChanged: (v) {
               d.incluyeSeguroDesgravamen = v ?? false;
-              onChanged(d);
+              widget.onChanged(d);
+              setState(() {});
             },
           ),
           Slider(
@@ -894,7 +984,8 @@ class _Paso3Condiciones extends StatelessWidget {
             activeColor: AppTheme.amarillo,
             onChanged: (v) {
               d.tea = v;
-              onChanged(d);
+              widget.onChanged(d);
+              setState(() {});
             },
           ),
           Container(

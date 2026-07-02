@@ -21,6 +21,7 @@ class SolicitudCreditoData {
   String garanteNombres;
   String garanteDni;
   String garanteTelefono;
+  bool sePudoVisitar;
 
   // Paso 2
   String tipoNegocio;
@@ -68,6 +69,7 @@ class SolicitudCreditoData {
     this.garanteNombres = '',
     this.garanteDni = '',
     this.garanteTelefono = '',
+    this.sePudoVisitar = true,
     this.tipoNegocio = '',
     this.nombreNegocio = '',
     this.direccionNegocio = '',
@@ -151,6 +153,7 @@ class SolicitudCreditoData {
         'garanteNombres': garanteNombres,
         'garanteDni': garanteDni,
         'garanteTelefono': garanteTelefono,
+        'sePudoVisitar': sePudoVisitar,
         'tipoNegocio': tipoNegocio,
         'nombreNegocio': nombreNegocio,
         'direccionNegocio': direccionNegocio,
@@ -195,6 +198,7 @@ class SolicitudCreditoData {
       garanteNombres: json['garanteNombres']?.toString() ?? '',
       garanteDni: json['garanteDni']?.toString() ?? '',
       garanteTelefono: json['garanteTelefono']?.toString() ?? '',
+      sePudoVisitar: json['sePudoVisitar'] != false,
       tipoNegocio: json['tipoNegocio']?.toString() ?? '',
       nombreNegocio: json['nombreNegocio']?.toString() ?? '',
       direccionNegocio: json['direccionNegocio']?.toString() ?? '',
@@ -297,6 +301,7 @@ class SolicitudCreditoData {
       garanteDni: json['garantedni']?.toString() ?? '',
       garanteTelefono: json['garantetelefono']?.toString() ?? '',
       incluirGarante: (json['garantenombres']?.toString() ?? '').isNotEmpty,
+      sePudoVisitar: true,
       tipoNegocio: json['tiponegocio']?.toString() ?? '',
       nombreNegocio: json['nombrenegocio']?.toString() ?? '',
       direccionNegocio: json['direccionnegocio']?.toString() ?? '',

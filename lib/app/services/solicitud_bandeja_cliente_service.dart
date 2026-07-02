@@ -108,8 +108,9 @@ class SolicitudBandejaClienteService {
           .from('solicitudescredito')
           .select(_selectCols)
           .or(
-            'estado.eq.pendiente_operador,'
-            'and(estado.in.(enviada,recibido_comite),origen.eq.app_cliente,asesorid.is.null)',
+            'and(estado.eq.pendiente_operador,analistaasignado.is.null),'
+            'and(estado.eq.enviada,origen.eq.app_cliente,asesorid.is.null),'
+            'and(estado.eq.recibido_comite,origen.eq.app_cliente,asesorid.is.null)',
           )
           .order('createdat', ascending: false)
           .limit(limit);
@@ -147,8 +148,9 @@ class SolicitudBandejaClienteService {
           .from('solicitudescredito')
           .select('id')
           .or(
-            'estado.eq.pendiente_operador,'
-            'and(estado.in.(enviada,recibido_comite),origen.eq.app_cliente,asesorid.is.null)',
+            'and(estado.eq.pendiente_operador,analistaasignado.is.null),'
+            'and(estado.eq.enviada,origen.eq.app_cliente,asesorid.is.null),'
+            'and(estado.eq.recibido_comite,origen.eq.app_cliente,asesorid.is.null)',
           );
       return (count: (rows as List).length, error: null);
     } catch (e) {
@@ -171,6 +173,26 @@ class SolicitudBandejaClienteService {
   }) async {
     try {
       final ahora = DateTime.now().toIso8601String();
+      // 1. Obtener estado actual (evitamos .inFilter o .or en el UPDATE para sortear el bug de PostgREST)
+      final actual = await _client
+          .from('solicitudescredito')
+          .select('estado')
+          .eq('id', solicitudId)
+          .maybeSingle();
+          
+      if (actual == null) {
+        return const ResultadoTomarSolicitud(ok: false, error: 'Solicitud no encontrada');
+      }
+
+      final estadoActual = actual['estado'] as String?;
+      if (!['pendiente_operador', 'enviada', 'recibido_comite'].contains(estadoActual)) {
+        return const ResultadoTomarSolicitud(
+          ok: false,
+          error: 'Esta solicitud ya fue tomada o no está disponible',
+        );
+      }
+
+      // 2. Actualizar asegurando atomicidad con .eq('estado', estadoActual)
       final updated = await _client
           .from('solicitudescredito')
           .update({
@@ -179,7 +201,7 @@ class SolicitudBandejaClienteService {
             'updatedat': ahora,
           })
           .eq('id', solicitudId)
-          .inFilter('estado', ['pendiente_operador', 'enviada', 'recibido_comite'])
+          .eq('estado', estadoActual!)
           .select()
           .maybeSingle();
 

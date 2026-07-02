@@ -61,7 +61,10 @@ class _AdminWebShellState extends State<AdminWebShell> {
   ];
 
   Future<void> _cerrarSesion() async {
-    await context.read<AuthOficialViewModel>().logout();
+    final vm = context.read<AuthOficialViewModel>();
+    await vm.logout();
+    if (!mounted) return;
+    setState(() => _rutaActual = AdminWebRoutes.inicio);
   }
 
   void _navegar(String ruta) {
@@ -127,71 +130,66 @@ class _AdminWebShellState extends State<AdminWebShell> {
                 ],
               ),
             ),
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: railExtendido
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              margin: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.superficie,
-                                borderRadius: BorderRadius.circular(10),
+            trailing: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: railExtendido
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.superficie,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${oficial.nombre} ${oficial.apellido}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${oficial.nombre} ${oficial.apellido}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    oficial.perfil.etiqueta,
-                                    style: const TextStyle(
-                                      color: AppTheme.amarillo,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ],
+                              const SizedBox(height: 4),
+                              Text(
+                                oficial.perfil.etiqueta,
+                                style: const TextStyle(
+                                  color: AppTheme.amarillo,
+                                  fontSize: 10,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton.icon(
-                              onPressed: _cerrarSesion,
-                              icon: const Icon(
-                                Icons.logout,
-                                size: 18,
-                                color: Colors.redAccent,
-                              ),
-                              label: const Text(
-                                'Cerrar sesión',
-                                style: TextStyle(color: Colors.redAccent),
-                              ),
-                            ),
-                          ],
-                        )
-                      : IconButton(
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
                           onPressed: _cerrarSesion,
                           icon: const Icon(
                             Icons.logout,
+                            size: 18,
                             color: Colors.redAccent,
                           ),
-                          tooltip: 'Cerrar sesión',
+                          label: const Text(
+                            'Cerrar sesión',
+                            style: TextStyle(color: Colors.redAccent),
+                          ),
                         ),
-                ),
-              ),
+                      ],
+                    )
+                  : IconButton(
+                      onPressed: _cerrarSesion,
+                      icon: const Icon(
+                        Icons.logout,
+                        color: Colors.redAccent,
+                      ),
+                      tooltip: 'Cerrar sesión',
+                    ),
             ),
             selectedIconTheme: const IconThemeData(color: AppTheme.amarillo),
             unselectedIconTheme: const IconThemeData(color: Colors.white54),
